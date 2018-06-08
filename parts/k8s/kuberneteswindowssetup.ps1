@@ -64,7 +64,7 @@ $global:KubeNetwork = "l2bridge"
 $global:KubeDnsSearchPath = "svc.cluster.local"
 
 # TODO: patricklang - find the kubeconfig here put it in a WrapAsVariable
-$global:KubeletOptionsTemp = @( {{GetKubeletConfigKeyValsPsh .KubernetesConfig }} )
+$global:KubeletConfigArgs = @( {{GetKubeletConfigKeyValsPsh .KubernetesConfig }} )
 
 $global:UseManagedIdentityExtension = "{{WrapAsVariable "useManagedIdentityExtension"}}"
 $global:UseInstanceMetadata = "{{WrapAsVariable "useInstanceMetadata"}}"
@@ -315,45 +315,12 @@ function
 Write-KubernetesStartFiles($podCIDR)
 {
     mkdir $global:VolumePluginDir 
-    $KubeletArgList = @(
-        "--node-labels=`$global:KubeletNodeLabels", # Wasn't in $KubeletCommandLine
-        "--hostname-override=`$global:AzureHostname", # different in $KubeletCommandLine
-        "--pod-infra-container-image=kubletwin/pause",
-        "--resolv-conf="" ",
-        "--kubeconfig=c:\k\config",
-        "--cloud-provider=azure",
-        "--cloud-config=c:\k\azure.json",
-        # below weren't in args, added from $KubeletCommandLine
-        "--allow-privileged=true",
-        "--enable-debugging-handlers",
-        "--cluster-dns=`$global:KubeDnsServiceIp",
-        "--cluster-domain=cluster.local",
-        "--hairpin-mode=promiscuous-bridge",
-        "--v=2",
-        "--azure-container-registry-config=c:\k\azure.json",
-        "--runtime-request-timeout=10m",
-        # Was further down in file
-        "--volume-plugin-dir=`$global:VolumePluginDir",
-        "--image-pull-progress-deadline=20m",
-        "--cgroups-per-qos=false",
-        "--enforce-node-allocatable=`"`""
-        )
+    $KubeletArgList = $global:KubeletConfigArgs
+    $KubeletArgList += "--node-labels=`$global:KubeletNodeLabels"
+    $KubeletArgList += "--hostname-override=`$global:AzureHostname"
+    $KubeletArgList += "--cluster-dns=`$global:KubeDnsServiceIp"
+    $KubeletArgList += "--volume-plugin-dir=`$global:VolumePluginDir"
     
-    #$KubeletCommandLine = @"c:\k\kubelet.exe"
-    #$KubeletCommandLine += @" --hostname-override=`$env:computername" # conflicts with $KubeletArgList
-    #$KubeletCommandLine += @" --pod-infra-container-image=kubletwin/pause"  # dupe with $KubeletArgList
-    #$KubeletCommandLine += @" --resolv-conf="" " # dupe with $KubeletArgList
-    #$KubeletCommandLine += @" --allow-privileged=true"
-    #$KubeletCommandLine += @" --enable-debugging-handlers"
-    #$KubeletCommandLine += @" --cluster-dns=`$global:KubeDnsServiceIp"
-    #$KubeletCommandLine += @" --cluster-domain=cluster.local"
-    #$KubeletCommandLine += @" --kubeconfig=c:\k\config" # dupe with $KubeletArgList
-    #$KubeletCommandLine += @" --hairpin-mode=promiscuous-bridge"
-    #$KubeletCommandLine += @" --v=2"
-    #$KubeletCommandLine += @" --azure-container-registry-config=c:\k\azure.json"
-    #$KubeletCommandLine += @" --runtime-request-timeout=10m"
-    #$KubeletCommandLine += @" --cloud-provider=azure" # dupe with $KubeletArgList
-    #$KubeletCommandLine += @" --cloud-config=c:\k\azure.json" # dupe with $KubeletArgList
 
     # Regex to strip version to Major.Minor.Build format such that the following check does not crash for version like x.y.z-alpha
     [regex]$regex = "^[0-9.]+"
@@ -362,13 +329,9 @@ Write-KubernetesStartFiles($podCIDR)
     {
         # --api-server deprecates from 1.8.0
         $KubeletArgList += "--api-servers=https://`${global:MasterIP}:443"
-        #$KubeletCommandLine += " --api-servers=https://`${global:MasterIP}:443"
     }
 
-    # more time is needed to pull windows server images
-    #$KubeletCommandLine += " --image-pull-progress-deadline=20m --cgroups-per-qos=false --enforce-node-allocatable=`"`""
-    #$KubeletCommandLine += " --volume-plugin-dir=`$global:VolumePluginDir"
-     # Configure kubelet to use CNI plugins if enabled.
+    # Configure kubelet to use CNI plugins if enabled.
     if ($global:AzureCNIEnabled) {
         $KubeletArgList += $global:AzureCNIKubeletOptions
     } else {
