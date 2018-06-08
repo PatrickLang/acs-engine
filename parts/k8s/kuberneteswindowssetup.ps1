@@ -1,3 +1,5 @@
+# This file extension is PS1, but it's actually used as a template from pkg/acsengine/template_generator.go
+# All of the lines that have {{}} in them will be modified. Please don't change them here, change them in the Go sources
 <#
     .SYNOPSIS
         Provisions VM as a Kubernetes agent.
@@ -63,7 +65,6 @@ $global:KubeServiceCIDR = "{{WrapAsParameter "kubeServiceCidr"}}"
 $global:KubeNetwork = "l2bridge"
 $global:KubeDnsSearchPath = "svc.cluster.local"
 
-# TODO: patricklang - find the kubeconfig here put it in a WrapAsVariable
 $global:KubeletConfigArgs = @( {{GetKubeletConfigKeyValsPsh .KubernetesConfig }} )
 
 $global:UseManagedIdentityExtension = "{{WrapAsVariable "useManagedIdentityExtension"}}"
@@ -315,11 +316,13 @@ function
 Write-KubernetesStartFiles($podCIDR)
 {
     mkdir $global:VolumePluginDir 
-    $KubeletArgList = $global:KubeletConfigArgs
+    $KubeletArgList = $global:KubeletConfigArgs # This is the initial list passed in from acs-engine
     $KubeletArgList += "--node-labels=`$global:KubeletNodeLabels"
     $KubeletArgList += "--hostname-override=`$global:AzureHostname"
     $KubeletArgList += "--cluster-dns=`$global:KubeDnsServiceIp"
     $KubeletArgList += "--volume-plugin-dir=`$global:VolumePluginDir"
+    # If you're thinking about adding another arg here, you should be considering pkg/acsengine/defaults-kubelet.go first
+    # Only args that need to be calculated or combined with other ones on the Windows agent should be added here.
     
 
     # Regex to strip version to Major.Minor.Build format such that the following check does not crash for version like x.y.z-alpha
