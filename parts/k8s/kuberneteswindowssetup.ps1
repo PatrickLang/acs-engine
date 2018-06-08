@@ -63,6 +63,8 @@ $global:KubeServiceCIDR = "{{WrapAsParameter "kubeServiceCidr"}}"
 $global:KubeNetwork = "l2bridge"
 $global:KubeDnsSearchPath = "svc.cluster.local"
 
+# TODO: patricklang - find the kubeconfig here put it in a WrapAsVariable
+
 $global:UseManagedIdentityExtension = "{{WrapAsVariable "useManagedIdentityExtension"}}"
 $global:UseInstanceMetadata = "{{WrapAsVariable "useInstanceMetadata"}}"
 $global:LoadBalancerSku = "{{WrapAsVariable "loadBalancerSku"}}"
@@ -72,7 +74,7 @@ $global:CNIPath = [Io.path]::Combine("$global:KubeDir", "cni")
 $global:NetworkMode = "L2Bridge"
 $global:CNIConfig = [Io.path]::Combine($global:CNIPath, "config", "`$global:NetworkMode.conf")
 $global:CNIConfigPath = [Io.path]::Combine("$global:CNIPath", "config")
-$global:WindowsCNIKubeletOptions = " --network-plugin=cni --cni-bin-dir=$global:CNIPath --cni-conf-dir=$global:CNIConfigPath"
+$global:WindowsCNIKubeletOptions = @("--network-plugin=cni", "--cni-bin-dir=$global:CNIPath", "--cni-conf-dir=$global:CNIConfigPath")
 $global:HNSModule = [Io.path]::Combine("$global:KubeDir", "hns.psm1")
 
 $global:VolumePluginDir = [Io.path]::Combine("$global:KubeDir", "volumeplugins")
@@ -84,7 +86,7 @@ $global:VNetCNIPluginsURL = "{{WrapAsParameter "vnetCniWindowsPluginsURL"}}"
 $global:AzureCNIDir = [Io.path]::Combine("$global:KubeDir", "azurecni")
 $global:AzureCNIBinDir = [Io.path]::Combine("$global:AzureCNIDir", "bin")
 $global:AzureCNIConfDir = [Io.path]::Combine("$global:AzureCNIDir", "netconf")
-$global:AzureCNIKubeletOptions = " --network-plugin=cni --cni-bin-dir=$global:AzureCNIBinDir --cni-conf-dir=$global:AzureCNIConfDir"
+$global:AzureCNIKubeletOptions = @("--network-plugin=cni", "--cni-bin-dir=$global:AzureCNIBinDir", "--cni-conf-dir=$global:AzureCNIConfDir")
 $global:AzureCNIEnabled = $false
 
 filter Timestamp {"$(Get-Date -Format o): $_"}
@@ -311,11 +313,47 @@ Set-NetworkConfig
 function
 Write-KubernetesStartFiles($podCIDR)
 {
-    mkdir $global:VolumePluginDir
-    $KubeletArgList = @(" --node-labels=`$global:KubeletNodeLabels --hostname-override=`$global:AzureHostname","--pod-infra-container-image=kubletwin/pause","--resolv-conf=""""""""","--kubeconfig=c:\k\config","--cloud-provider=azure","--cloud-config=c:\k\azure.json")
-    $KubeletCommandLine = @"
-c:\k\kubelet.exe --hostname-override=`$env:computername --pod-infra-container-image=kubletwin/pause --resolv-conf="" --allow-privileged=true --enable-debugging-handlers --cluster-dns=`$global:KubeDnsServiceIp --cluster-domain=cluster.local  --kubeconfig=c:\k\config --hairpin-mode=promiscuous-bridge --v=2 --azure-container-registry-config=c:\k\azure.json --runtime-request-timeout=10m  --cloud-provider=azure --cloud-config=c:\k\azure.json
-"@
+    mkdir $global:VolumePluginDir 
+    $KubeletArgList = @(
+        "--node-labels=`$global:KubeletNodeLabels", # Wasn't in $KubeletCommandLine
+        "--hostname-override=`$global:AzureHostname", # different in $KubeletCommandLine
+        "--pod-infra-container-image=kubletwin/pause",
+        "--resolv-conf="" ",
+        "--kubeconfig=c:\k\config",
+        "--cloud-provider=azure",
+        "--cloud-config=c:\k\azure.json",
+        # below weren't in args, added from $KubeletCommandLine
+        "--allow-privileged=true",
+        "--enable-debugging-handlers",
+        "--cluster-dns=`$global:KubeDnsServiceIp",
+        "--cluster-domain=cluster.local",
+        "--hairpin-mode=promiscuous-bridge",
+        "--v=2",
+        "--azure-container-registry-config=c:\k\azure.json",
+        "--runtime-request-timeout=10m",
+        # Was further down in file
+        "--volume-plugin-dir=`$global:VolumePluginDir",
+        "--image-pull-progress-deadline=20m",
+        "--cgroups-per-qos=false",
+        "--enforce-node-allocatable=`"`""
+        )
+    
+    #$KubeletCommandLine = @"c:\k\kubelet.exe"
+    #$KubeletCommandLine += @" --hostname-override=`$env:computername" # conflicts with $KubeletArgList
+    #$KubeletCommandLine += @" --pod-infra-container-image=kubletwin/pause"  # dupe with $KubeletArgList
+    #$KubeletCommandLine += @" --resolv-conf="" " # dupe with $KubeletArgList
+    #$KubeletCommandLine += @" --allow-privileged=true"
+    #$KubeletCommandLine += @" --enable-debugging-handlers"
+    #$KubeletCommandLine += @" --cluster-dns=`$global:KubeDnsServiceIp"
+    #$KubeletCommandLine += @" --cluster-domain=cluster.local"
+    #$KubeletCommandLine += @" --kubeconfig=c:\k\config" # dupe with $KubeletArgList
+    #$KubeletCommandLine += @" --hairpin-mode=promiscuous-bridge"
+    #$KubeletCommandLine += @" --v=2"
+    #$KubeletCommandLine += @" --azure-container-registry-config=c:\k\azure.json"
+    #$KubeletCommandLine += @" --runtime-request-timeout=10m"
+    #$KubeletCommandLine += @" --cloud-provider=azure" # dupe with $KubeletArgList
+    #$KubeletCommandLine += @" --cloud-config=c:\k\azure.json" # dupe with $KubeletArgList
+
     # Regex to strip version to Major.Minor.Build format such that the following check does not crash for version like x.y.z-alpha
     [regex]$regex = "^[0-9.]+"
     $KubeBinariesVersionStripped = $regex.Matches($global:KubeBinariesVersion).Value
@@ -323,22 +361,24 @@ c:\k\kubelet.exe --hostname-override=`$env:computername --pod-infra-container-im
     {
         # --api-server deprecates from 1.8.0
         $KubeletArgList += "--api-servers=https://`${global:MasterIP}:443"
-        $KubeletCommandLine += " --api-servers=https://`${global:MasterIP}:443"
+        #$KubeletCommandLine += " --api-servers=https://`${global:MasterIP}:443"
     }
 
     # more time is needed to pull windows server images
-    $KubeletCommandLine += " --image-pull-progress-deadline=20m --cgroups-per-qos=false --enforce-node-allocatable=`"`""
-    $KubeletCommandLine += " --volume-plugin-dir=`$global:VolumePluginDir"
+    #$KubeletCommandLine += " --image-pull-progress-deadline=20m --cgroups-per-qos=false --enforce-node-allocatable=`"`""
+    #$KubeletCommandLine += " --volume-plugin-dir=`$global:VolumePluginDir"
      # Configure kubelet to use CNI plugins if enabled.
     if ($global:AzureCNIEnabled) {
-        $KubeletCommandLine += $global:AzureCNIKubeletOptions
+        $KubeletArgList += $global:AzureCNIKubeletOptions
     } else {
-        $KubeletCommandLine += $global:WindowsCNIKubeletOptions
+        $KubeletArgList += $global:WindowsCNIKubeletOptions
     }
 
     $KubeletArgListStr = "`"" + ($KubeletArgList -join "`",`"") + "`""
 
     $KubeletArgListStr = "@`($KubeletArgListStr`)"
+
+    $KubeletCommandLine = @"c:\k\kubelet.exe " + $KubeletArgListStr
 
     $kubeStartStr = @"
 `$global:MasterIP = "$MasterIP"
@@ -423,7 +463,9 @@ Restart-Service Kubeproxy
 $KubeletCommandLine
 
 "@
-    } else {
+    } 
+    else  # using WinCNI. TODO: If WinCNI support is removed, then delete this as dead code later
+    {
         $kubeStartStr += @"
 
 function
@@ -561,7 +603,7 @@ catch
 }
 
 "@
-    }
+    } # end else using WinCNI.
 
     $kubeStartStr | Out-File -encoding ASCII -filepath $global:KubeletStartFile
 
