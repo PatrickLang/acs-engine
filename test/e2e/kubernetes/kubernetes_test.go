@@ -724,24 +724,30 @@ var _ = Describe("Azure Container Cluster using the Kubernetes Orchestrator", fu
 	Describe("with a windows agent pool", func() {
 		It("should be able to deploy an iis webserver", func() {
 			if eng.HasWindowsAgents() {
+				iisImage := "microsoft/iis:windowsservercore-1803"
+
+				By("Creating a deployment with 1 pod running IIS")
 				r := rand.New(rand.NewSource(time.Now().UnixNano()))
 				deploymentName := fmt.Sprintf("iis-%s-%v", cfg.Name, r.Intn(99999))
-				iisDeploy, err := deployment.CreateWindowsDeploy("microsoft/iis:windowsservercore-1803", deploymentName, "default", 80, -1)
+				iisDeploy, err := deployment.CreateWindowsDeploy(iisImage, deploymentName, "default", 80, -1)
 				Expect(err).NotTo(HaveOccurred())
 
+				By("Waiting on pod to be Ready")
 				running, err := pod.WaitOnReady(deploymentName, "default", 3, 30*time.Second, cfg.Timeout)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(running).To(Equal(true))
 
+				By("Exposing a LoadBalancer for the pod")
 				err = iisDeploy.Expose("LoadBalancer", 80, 80)
 				Expect(err).NotTo(HaveOccurred())
-
 				s, err := service.Get(deploymentName, "default")
 				Expect(err).NotTo(HaveOccurred())
 
+				By("Verifying that the service is reachable and returns the default IIS start page")
 				valid := s.Validate("(IIS Windows Server)", 10, 10*time.Second, cfg.Timeout)
 				Expect(valid).To(BeTrue())
 
+				By("Checking that each pod can reach http://www.bing.com")
 				iisPods, err := iisDeploy.Pods()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(iisPods)).ToNot(BeZero())
@@ -751,6 +757,7 @@ var _ = Describe("Azure Container Cluster using the Kubernetes Orchestrator", fu
 					Expect(pass).To(BeTrue())
 				}
 
+				By("Verifying pods & services can be deleted")
 				err = iisDeploy.Delete()
 				Expect(err).NotTo(HaveOccurred())
 				err = s.Delete()
@@ -781,7 +788,7 @@ var _ = Describe("Azure Container Cluster using the Kubernetes Orchestrator", fu
 					r := rand.New(rand.NewSource(time.Now().UnixNano()))
 					hostport := 8123
 					deploymentName := fmt.Sprintf("iis-%s-%v", cfg.Name, r.Intn(99999))
-					iisDeploy, err := deployment.CreateWindowsDeploy("microsoft/iis:windowsservercore-1803", deploymentName, "default", 80, hostport)
+					iisDeploy, err := deployment.CreateWindowsDeploy(iisImage, deploymentName, "default", 80, hostport)
 					Expect(err).NotTo(HaveOccurred())
 
 					running, err := pod.WaitOnReady(deploymentName, "default", 3, 30*time.Second, cfg.Timeout)
