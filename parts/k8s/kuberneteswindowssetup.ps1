@@ -1,11 +1,13 @@
-# This file extension is PS1, but it's actually used as a template from pkg/acsengine/template_generator.go
-# All of the lines that have braces in them will be modified. Please don't change them here, change them in the Go sources
 <#
     .SYNOPSIS
         Provisions VM as a Kubernetes agent.
 
     .DESCRIPTION
         Provisions VM as a Kubernetes agent.
+        
+        This file extension is PS1, but it is actually used as a template from pkg/acsengine/template_generator.go
+        All of the lines that have braces in them will be modified. Please do not change them here, change them in the Go sources
+
 #>
 [CmdletBinding(DefaultParameterSetName="Standard")]
 param(
