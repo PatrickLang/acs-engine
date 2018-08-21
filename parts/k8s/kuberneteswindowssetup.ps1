@@ -349,7 +349,7 @@ Write-KubernetesStartFiles($podCIDR)
 
     $KubeletArgListStr = "@`($KubeletArgListStr`)"
 
-    $KubeletCommandLine = @"c:\k\kubelet.exe " + $KubeletArgListStr
+    $KubeletCommandLine = "c:\k\kubelet.exe " + $KubeletArgListStr
 
     $kubeStartStr = @"
 `$global:MasterIP = "$MasterIP"
