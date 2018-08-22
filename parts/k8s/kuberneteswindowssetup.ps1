@@ -345,9 +345,7 @@ Write-KubernetesStartFiles($podCIDR)
         $KubeletArgList += $global:WindowsCNIKubeletOptions
     }
 
-    $KubeletArgListStr = "`"" + ($KubeletArgList -join "`",`"") + "`""
-
-    $KubeletArgListStr = "@`($KubeletArgListStr`)"
+    $KubeletArgListStr = $KubeletArgList -join " "
 
     $KubeletCommandLine = "c:\k\kubelet.exe " + $KubeletArgListStr
 
