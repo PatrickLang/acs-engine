@@ -26,16 +26,27 @@ func setKubeletConfig(cs *api.ContainerService) {
 		"--keep-terminated-pod-volumes": "false",
 	}
 
+	// Start with copy of Linux config
 	staticWindowsKubeletConfig := make(map[string]string)
 	for key, val := range staticLinuxKubeletConfig {
 		staticWindowsKubeletConfig[key] = val
 	}
+	// Remove Linux-specific values
+	delete(staticWindowsKubeletConfig, "--client-ca-file")
+	delete(staticWindowsKubeletConfig, "--pod-manifest-path")
+	delete(staticWindowsKubeletConfig, "--authorization-mode") // TODO: review this
+	delete(staticWindowsKubeletConfig, "--anonymous-auth")     // TODO: review this
+
+	// Add Windows-specific overrides
 	staticWindowsKubeletConfig["--azure-container-registry-config"] = "c:\\k\\azure.json"
 	staticWindowsKubeletConfig["--pod-infra-container-image"] = "kubletwin/pause"
 	staticWindowsKubeletConfig["--kubeconfig"] = "c:\\k\\config"
 	staticWindowsKubeletConfig["--cloud-config"] = "c:\\k\\azure.json"
 	staticWindowsKubeletConfig["--cgroups-per-qos"] = "false"
-	staticWindowsKubeletConfig["--enforce-node-allocatable"] = "\"\""
+	staticWindowsKubeletConfig["--enforce-node-allocatable"] = "\"\"\"\""
+	staticWindowsKubeletConfig["--client-ca-file"] = ""
+	staticWindowsKubeletConfig["--hairpin-mode"] = "promiscuous-bridge"
+	staticWindowsKubeletConfig["--image-pull-progress-deadline"] = "20m"
 
 	// Default Kubelet config
 	defaultKubeletConfig := map[string]string{
