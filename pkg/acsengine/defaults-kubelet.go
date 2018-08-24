@@ -34,8 +34,7 @@ func setKubeletConfig(cs *api.ContainerService) {
 	// Remove Linux-specific values
 	delete(staticWindowsKubeletConfig, "--client-ca-file")
 	delete(staticWindowsKubeletConfig, "--pod-manifest-path")
-	delete(staticWindowsKubeletConfig, "--authorization-mode") // TODO: review this
-	delete(staticWindowsKubeletConfig, "--anonymous-auth")     // TODO: review this
+	delete(staticWindowsKubeletConfig, "--anonymous-auth") // TODO: figure out why this breaks on Windows
 
 	// Add Windows-specific overrides
 	staticWindowsKubeletConfig["--azure-container-registry-config"] = "c:\\k\\azure.json"
