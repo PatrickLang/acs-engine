@@ -31,10 +31,6 @@ func setKubeletConfig(cs *api.ContainerService) {
 	for key, val := range staticLinuxKubeletConfig {
 		staticWindowsKubeletConfig[key] = val
 	}
-	// Remove Linux-specific values
-	delete(staticWindowsKubeletConfig, "--client-ca-file")
-	delete(staticWindowsKubeletConfig, "--pod-manifest-path")
-	delete(staticWindowsKubeletConfig, "--anonymous-auth") // TODO: figure out why this breaks on Windows
 
 	// Add Windows-specific overrides
 	staticWindowsKubeletConfig["--azure-container-registry-config"] = "c:\\k\\azure.json"
@@ -138,6 +134,10 @@ func setKubeletConfig(cs *api.ContainerService) {
 			profile.KubernetesConfig = &api.KubernetesConfig{}
 			profile.KubernetesConfig.KubeletConfig = copyMap(profile.KubernetesConfig.KubeletConfig)
 			if profile.OSType == "Windows" {
+				// Remove Linux-specific values
+				delete(profile.KubernetesConfig.KubeletConfig, "--client-ca-file")
+				delete(profile.KubernetesConfig.KubeletConfig, "--pod-manifest-path")
+				delete(profile.KubernetesConfig.KubeletConfig, "--anonymous-auth") // BUG: enable secure kubelet on Windows
 				for key, val := range staticWindowsKubeletConfig {
 					profile.KubernetesConfig.KubeletConfig[key] = val
 				}
