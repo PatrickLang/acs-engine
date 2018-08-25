@@ -134,16 +134,19 @@ func setKubeletConfig(cs *api.ContainerService) {
 			profile.KubernetesConfig = &api.KubernetesConfig{}
 			profile.KubernetesConfig.KubeletConfig = copyMap(profile.KubernetesConfig.KubeletConfig)
 			if profile.OSType == "Windows" {
-				// Remove Linux-specific values
-				delete(profile.KubernetesConfig.KubeletConfig, "--client-ca-file")
-				delete(profile.KubernetesConfig.KubeletConfig, "--pod-manifest-path")
-				delete(profile.KubernetesConfig.KubeletConfig, "--anonymous-auth") // BUG: enable secure kubelet on Windows
 				for key, val := range staticWindowsKubeletConfig {
 					profile.KubernetesConfig.KubeletConfig[key] = val
 				}
 			}
 		}
 		setMissingKubeletValues(profile.KubernetesConfig, o.KubernetesConfig.KubeletConfig)
+
+		if profile.OSType == "Windows" {
+			// Remove Linux-specific values
+			delete(profile.KubernetesConfig.KubeletConfig, "--client-ca-file")
+			delete(profile.KubernetesConfig.KubeletConfig, "--pod-manifest-path")
+			delete(profile.KubernetesConfig.KubeletConfig, "--anonymous-auth") // BUG: enable secure kubelet on Windows
+		}
 
 		// For N Series (GPU) VMs
 		if strings.Contains(profile.VMSize, "Standard_N") {
