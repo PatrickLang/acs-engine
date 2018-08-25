@@ -1,6 +1,7 @@
 package acsengine
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
@@ -12,6 +13,8 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -801,6 +804,31 @@ func getSecurityRules(ports []int) string {
 	return buf.String()
 }
 
+func dumpTempFile(textFilename string, contents string) error {
+	var err error
+
+	tempOutFilename := path.Join(os.TempDir(), textFilename+".out")
+	tempOutDir := path.Dir(tempOutFilename)
+	err = os.MkdirAll(tempOutDir, 0700)
+	if err != nil {
+		return err
+	}
+	var file *os.File
+	file, err = os.Create(tempOutFilename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	w := bufio.NewWriter(file)
+	_, err = w.WriteString(contents)
+	if err != nil {
+		return err
+	}
+	w.Flush()
+
+	return nil
+}
+
 // getSingleLineForTemplate returns the file as a single line for embedding in an arm template
 func (t *TemplateGenerator) getSingleLineForTemplate(textFilename string, cs *api.ContainerService, profile interface{}) (string, error) {
 	b, err := Asset(textFilename)
@@ -819,6 +847,11 @@ func (t *TemplateGenerator) getSingleLineForTemplate(textFilename string, cs *ap
 		return "", t.Translator.Errorf("error executing template for file %s: %v", textFilename, err)
 	}
 	expandedTemplate := buffer.String()
+
+	err = dumpTempFile(textFilename, expandedTemplate)
+	if err != nil {
+		return "", err
+	}
 
 	textStr := escapeSingleLine(string(expandedTemplate))
 
