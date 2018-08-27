@@ -39,7 +39,7 @@ func setKubeletConfig(cs *api.ContainerService) {
 	staticWindowsKubeletConfig["--cloud-config"] = "c:\\k\\azure.json"
 	staticWindowsKubeletConfig["--cgroups-per-qos"] = "false"
 	staticWindowsKubeletConfig["--enforce-node-allocatable"] = "\"\"\"\""
-	staticWindowsKubeletConfig["--client-ca-file"] = ""
+	staticWindowsKubeletConfig["--client-ca-file"] = "" // BUG - #3747 implement this on Windows
 	staticWindowsKubeletConfig["--hairpin-mode"] = "promiscuous-bridge"
 	staticWindowsKubeletConfig["--image-pull-progress-deadline"] = "20m"
 
@@ -145,7 +145,7 @@ func setKubeletConfig(cs *api.ContainerService) {
 			// Remove Linux-specific values
 			delete(profile.KubernetesConfig.KubeletConfig, "--client-ca-file")
 			delete(profile.KubernetesConfig.KubeletConfig, "--pod-manifest-path")
-			delete(profile.KubernetesConfig.KubeletConfig, "--anonymous-auth") // BUG: enable secure kubelet on Windows
+			delete(profile.KubernetesConfig.KubeletConfig, "--anonymous-auth") // BUG: enable secure kubelet on Windows #3747
 		}
 
 		// For N Series (GPU) VMs
