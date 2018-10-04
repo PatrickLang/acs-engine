@@ -661,7 +661,7 @@ func (t *TemplateGenerator) getTemplateFuncMap(cs *api.ContainerService) templat
 			return fmt.Sprintf("\"customData\": \"%s\"", str)
 		},
 		"GetKubernetesWindowsAgentCustomData": func(profile *api.AgentPoolProfile) string {
-			str, e := t.getSingleLineForTemplate(kubernetesWindowsAgentCustomDataPS1, cs, profile)
+			str, e := t.getSingleLine(kubernetesWindowsAgentCustomDataPS1, cs, profile)
 			if e != nil {
 				panic(e)
 			}
