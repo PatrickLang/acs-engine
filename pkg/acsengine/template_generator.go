@@ -933,6 +933,8 @@ func (t *TemplateGenerator) getTemplateFuncMap(cs *api.ContainerService) templat
 		"GetServicePrincipalClientSecret": func() string {
 			return cs.Properties.ServicePrincipalProfile.Secret
 		},
-		"windowsEscape": helpers.WindowsEscape,
+		"GetServicePrincipalClientSecretBase64": func() string {
+			return base64.StdEncoding.EncodeToString(cs.Properties.ServicePrincipalProfile.Secret)
+		},
 	}
 }
