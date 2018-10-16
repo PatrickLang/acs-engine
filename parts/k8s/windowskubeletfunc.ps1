@@ -267,7 +267,7 @@ Install-KubernetesServices
         $MasterIP,
         [Parameter(Mandatory=$true)][string]
         $KubeDnsServiceIp,
-        [Parameter(Mandatory=$true)][string]
+        [string]
         $MasterSubnet,
         [Parameter(Mandatory=$true)][string]
         $KubeClusterCIDR,

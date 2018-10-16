@@ -62,7 +62,7 @@ Set-AzureCNIConfig
         $KubeDnsSearchPath,
         [Parameter(Mandatory=$true)][string]
         $KubeClusterCIDR,
-        [Parameter(Mandatory=$true)][string]
+        [string]
         $MasterSubnet,
         [Parameter(Mandatory=$true)][string]
         $KubeServiceCIDR
